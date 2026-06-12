@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Copy-Item \"$env:TEMP\\\\skill-inspect\\\\project-bootstrap\" \"C:\\\\Users\\\\nilfi\\\\.claude\\\\skills\\\\project-bootstrap\" -Recurse -Force; Get-ChildItem \"C:\\\\Users\\\\nilfi\\\\.claude\\\\skills\\\\project-bootstrap\" -Recurse -Name)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(ls /c/Users/nilfi/projetos/ 2>/dev/null && echo \"EXISTS\" || echo \"NOT FOUND\")",
+      "Read(//c/Users/nilfi/**)",
+      "Bash(npx skills@latest add mattpocock/skills --yes --global)"
+    ]
+  }
+}
