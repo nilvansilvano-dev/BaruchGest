@@ -34,6 +34,20 @@ Como reverter: remover campo SaldoInicial do AnoFiscal e reativar subcategoria "
 
 ---
 
+## 2026-06-15 — MVP ATINGIDO: todos os criterios do Gate validados
+
+O que mudou: Fase 5 executada e aprovada. Os 4 criterios do MVP Gate foram verificados via HTTP em ambiente real (SQL Server Express + API rodando).
+Criterios verificados:
+1. Receita R$1000 lancada → aparece no resumo com valor correto (HTTP 201 + GET confirma)
+2. Despesa R$300 lancada → aparece no resumo com valor correto (HTTP 201 + GET confirma)
+3. SaldoMensal = R$700 (1000-300) ✓ | SaldoAcumulado = R$1200 (500 SaldoInicial + 700) ✓
+4. Contador: GET resumo = 200 ✓ | POST receita = 403 ✓ | DELETE despesa = 403 ✓ | Sem token = 401 ✓
+Extras verificados: "Saldo anterior" nao aparece nas categorias ativas.
+Por que registrar: marco de transicao — a partir daqui o regime e POS-MVP.
+Proximo passo: Fases 6-9 (interface, relatorios, importacao, API banco).
+
+---
+
 ## 2026-06-15 — Fase 4 concluida: Autenticacao JWT com perfis usuario/contador
 
 O que mudou: entidade `Usuario` adicionada com Email, SenhaHash (BCrypt) e Perfil. JWT Bearer configurado. `AuthController` com `POST /api/auth/login` retornando token de 8h. Todos os endpoints protegidos com `[Authorize]`. Endpoints de escrita protegidos com `[Authorize(Roles = "usuario")]`. Dois usuarios de teste criados via `AuthSeeder` na inicializacao. Swagger configurado com suporte a Bearer token.

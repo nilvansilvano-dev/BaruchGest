@@ -100,7 +100,7 @@
 
 ## Fase MVP
 
-### Fase 5 [MVP][HITL] — Validacao do MVP Gate
+### Fase 5 [MVP][HITL][MVP ATINGIDO 2026-06-15] — Validacao do MVP Gate
 
 **Objetivo:** O sistema satisfaz todos os criterios do PRD. Supera a planilha Excel.
 
@@ -126,7 +126,7 @@
 
 ## Fases POS-MVP
 
-### Fase 6 [POS-MVP][HITL] — Interface web ou mobile
+### Fase 6 [POS-MVP][HITL][AGUARDANDO VALIDACAO] — Interface web ou mobile
 
 **Objetivo:** Existe uma interface visual para usar o sistema sem precisar do Swagger.
 
