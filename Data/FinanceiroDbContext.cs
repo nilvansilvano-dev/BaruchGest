@@ -125,6 +125,7 @@ public class FinanceiroDbContext : DbContext
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.SenhaHash).IsRequired();
             e.Property(x => x.Perfil).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Ativo).HasDefaultValue(true);
             e.Property(x => x.CriadoEm).HasDefaultValueSql("GETDATE()");
         });
     }

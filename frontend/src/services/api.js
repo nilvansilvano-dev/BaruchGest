@@ -38,6 +38,10 @@ async function req(method, path, body) {
 export const api = {
   login: (email, senha) => req('POST', '/api/auth/login', { email, senha }),
 
+  getUsuarios: () => req('GET', '/api/usuarios'),
+  createUsuario: (data) => req('POST', '/api/usuarios', data),
+  setUsuarioAtivo: (id, ativo) => req('PATCH', `/api/usuarios/${id}/ativo?ativo=${ativo}`),
+
   getAnosFiscais: () => req('GET', '/api/anos-fiscais'),
   createAnoFiscal: (data) => req('POST', '/api/anos-fiscais', data),
 

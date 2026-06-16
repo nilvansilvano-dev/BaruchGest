@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import LogoBaruchGest from '../assets/LogoBaruchGest';
 import './Layout.css';
 
 export default function Layout() {
@@ -15,8 +16,11 @@ export default function Layout() {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <span className="logo-icon">₢</span>
-          <span className="logo-text">Financeiro</span>
+          <LogoBaruchGest size={36} />
+          <div className="logo-name">
+            <span><span className="logo-baruch">Baruch</span><span className="logo-gest">Gest</span></span>
+            <span className="logo-slogan">Transformando controle em crescimento.</span>
+          </div>
         </div>
 
         <nav className="sidebar-nav">
@@ -29,12 +33,15 @@ export default function Layout() {
           <NavLink to="/despesas" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             💸 Despesas
           </NavLink>
+          {user?.perfil === 'contador' && (
+            <NavLink to="/usuarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              👤 Usuários
+            </NavLink>
+          )}
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-info">
-            <span className="user-perfil">{user?.perfil}</span>
-          </div>
+          <span className="user-perfil">{user?.perfil}</span>
           <button className="btn-logout" onClick={handleLogout}>Sair</button>
         </div>
       </aside>

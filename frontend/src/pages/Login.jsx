@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import LogoBaruchGest from '../assets/LogoBaruchGest';
 import './Login.css';
 
 export default function Login() {
@@ -31,9 +32,14 @@ export default function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <span className="login-logo">₢</span>
-          <h1>Controle Financeiro</h1>
-          <p>Entre com sua conta para continuar</p>
+          <div className="login-logo-wrap">
+            <LogoBaruchGest size={52} />
+          </div>
+          <h1 className="login-brand">
+            <span className="login-brand-baruch">Baruch</span>
+            <span className="login-brand-gest">Gest</span>
+          </h1>
+          <p className="login-slogan">Transformando controle em crescimento.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

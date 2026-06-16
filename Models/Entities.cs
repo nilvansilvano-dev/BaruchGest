@@ -101,6 +101,7 @@ public class Usuario
     public string Email { get; set; } = "";
     public string SenhaHash { get; set; } = "";
     public string Perfil { get; set; } = "usuario"; // "usuario" | "contador"
+    public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; }
 }
 

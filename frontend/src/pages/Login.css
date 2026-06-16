@@ -1,6 +1,6 @@
 .login-page {
   min-height: 100vh;
-  background: #f0f2f5;
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8,11 +8,11 @@
 
 .login-card {
   background: #fff;
-  border-radius: 12px;
-  padding: 40px;
+  border-radius: 16px;
+  padding: 44px 40px;
   width: 100%;
-  max-width: 380px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  max-width: 400px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
 }
 
 .login-header {
@@ -20,22 +20,25 @@
   margin-bottom: 32px;
 }
 
-.login-logo {
-  font-size: 36px;
-  color: #3498db;
-  display: block;
-  margin-bottom: 12px;
+.login-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
 }
 
-.login-header h1 {
-  font-size: 20px;
-  color: #1a2332;
-  margin: 0 0 6px;
+.login-brand {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  letter-spacing: 0.3px;
 }
 
-.login-header p {
-  color: #8fa3b1;
-  font-size: 14px;
+.login-brand-baruch { color: #0F172A; }
+.login-brand-gest   { color: #10B981; }
+
+.login-slogan {
+  color: #64748B;
+  font-size: 13px;
   margin: 0;
 }
 
@@ -52,48 +55,58 @@
 }
 
 .field label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #4a5568;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .field input {
-  padding: 10px 12px;
-  border: 1px solid #dde1e7;
+  padding: 11px 14px;
+  border: 1.5px solid #E2E8F0;
   border-radius: 8px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s;
+  background: #F8FAFC;
 }
 
 .field input:focus {
-  border-color: #3498db;
+  border-color: #10B981;
+  background: #fff;
 }
 
 .login-erro {
-  background: #fdf2f2;
-  border: 1px solid #fca5a5;
-  color: #dc2626;
-  padding: 10px 12px;
+  background: #FFF1F2;
+  border: 1px solid #FECDD3;
+  color: #BE123C;
+  padding: 10px 14px;
   border-radius: 8px;
   font-size: 13px;
 }
 
 .btn-entrar {
-  background: #3498db;
+  background: #10B981;
   color: #fff;
   border: none;
-  padding: 12px;
-  border-radius: 8px;
+  padding: 13px;
+  border-radius: 10px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   margin-top: 4px;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0.3px;
 }
 
 .btn-entrar:hover:not(:disabled) {
-  background: #2980b9;
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.btn-entrar:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-entrar:disabled {

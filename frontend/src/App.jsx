@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Resumo from './pages/Resumo';
 import Receitas from './pages/Receitas';
 import Despesas from './pages/Despesas';
+import Usuarios from './pages/Usuarios';
 
 function PrivateRoute({ children }) {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function App() {
             <Route index element={<Resumo />} />
             <Route path="receitas" element={<Receitas />} />
             <Route path="despesas" element={<Despesas />} />
+            <Route path="usuarios" element={<Usuarios />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

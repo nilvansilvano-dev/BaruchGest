@@ -95,6 +95,11 @@ public record DespesaGrupoResponse(
 public record LoginRequest(string Email, string Senha);
 public record LoginResponse(string Token, string Perfil, DateTime Expira);
 
+// ---------- USUARIOS (gerenciado pelo contador) ----------
+
+public record UsuarioCreateRequest(string Email, string Senha);
+public record UsuarioResponse(int Id, string Email, string Perfil, bool Ativo, DateTime CriadoEm);
+
 // ---------- ANO FISCAL ----------
 
 public record AnoFiscalRequest(int Ano, string? Descricao, decimal SaldoInicial = 0);

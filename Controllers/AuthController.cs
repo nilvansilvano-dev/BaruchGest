@@ -29,6 +29,9 @@ public class AuthController : ControllerBase
         if (usuario is null || !BCrypt.Net.BCrypt.Verify(req.Senha, usuario.SenhaHash))
             return Unauthorized("Email ou senha incorretos.");
 
+        if (!usuario.Ativo)
+            return Unauthorized("Conta desativada. Entre em contato com o contador.");
+
         var (token, expira) = _tokenService.GenerateToken(usuario);
         return Ok(new LoginResponse(token, usuario.Perfil, expira));
     }
