@@ -90,6 +90,11 @@ public record DespesaGrupoResponse(
     decimal PercentualSobreTotal
 );
 
+// ---------- AUTH ----------
+
+public record LoginRequest(string Email, string Senha);
+public record LoginResponse(string Token, string Perfil, DateTime Expira);
+
 // ---------- ANO FISCAL ----------
 
 public record AnoFiscalRequest(int Ano, string? Descricao, decimal SaldoInicial = 0);

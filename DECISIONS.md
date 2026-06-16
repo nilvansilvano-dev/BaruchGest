@@ -34,6 +34,16 @@ Como reverter: remover campo SaldoInicial do AnoFiscal e reativar subcategoria "
 
 ---
 
+## 2026-06-15 — Fase 4 concluida: Autenticacao JWT com perfis usuario/contador
+
+O que mudou: entidade `Usuario` adicionada com Email, SenhaHash (BCrypt) e Perfil. JWT Bearer configurado. `AuthController` com `POST /api/auth/login` retornando token de 8h. Todos os endpoints protegidos com `[Authorize]`. Endpoints de escrita protegidos com `[Authorize(Roles = "usuario")]`. Dois usuarios de teste criados via `AuthSeeder` na inicializacao. Swagger configurado com suporte a Bearer token.
+Por que: PRE-MVP exige autenticacao para isolar perfis usuario e contador antes de expor a API publicamente.
+Alternativa descartada: ASP.NET Core Identity (pesado para API simples com apenas 2 perfis).
+Impacto: todos os endpoints agora retornam 401 sem token; contador recebe 403 em POST/PUT/DELETE.
+Como reverter: remover `[Authorize]` dos controllers, desregistrar JWT em Program.cs, remover migration AddUsuario.
+
+---
+
 ## 2026-06-12 — Fase 3 concluida: SaldoInicial implementado e migration aplicada
 
 O que mudou: campo `SaldoInicial` adicionado a entidade e tabela `AnoFiscal`. `ResumoService` criado para calcular `SaldoAcumulado` partindo do `SaldoInicial`. Migration `AddSaldoInicialToAnoFiscal` aplicada. `AnoFiscalController` retorna `AnoFiscalResponse` com `SaldoInicial`. `ResumoController` delegado ao `ResumoService`.

@@ -15,6 +15,7 @@ public class FinanceiroDbContext : DbContext
     public DbSet<GrupoDespesa> GruposDespesa => Set<GrupoDespesa>();
     public DbSet<CategoriaDespesa> CategoriasDespesa => Set<CategoriaDespesa>();
     public DbSet<LancamentoDespesa> LancamentosDespesa => Set<LancamentoDespesa>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -114,6 +115,17 @@ public class FinanceiroDbContext : DbContext
              .WithMany()
              .HasForeignKey(x => x.CategoriaDespesaId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        model.Entity<Usuario>(e =>
+        {
+            e.ToTable("Usuario");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Email).HasMaxLength(200).IsRequired();
+            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.SenhaHash).IsRequired();
+            e.Property(x => x.Perfil).HasMaxLength(20).IsRequired();
+            e.Property(x => x.CriadoEm).HasDefaultValueSql("GETDATE()");
         });
     }
 }

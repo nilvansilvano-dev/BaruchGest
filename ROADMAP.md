@@ -76,7 +76,7 @@
 
 ---
 
-### Fase 4 [PRE-MVP][HITL] — Autenticacao (Usuario + Contador)
+### Fase 4 [PRE-MVP][HITL][CONCLUIDA 2026-06-15] — Autenticacao (Usuario + Contador)
 
 **Objetivo:** A API exige login. Usuario tem acesso completo. Contador tem somente leitura.
 

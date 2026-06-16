@@ -3,6 +3,7 @@
 // Endpoints REST para Receita, Despesa e Resumo
 // ============================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using FinanceiroAPI.DTOs;
 using FinanceiroAPI.Models;
@@ -14,6 +15,7 @@ namespace FinanceiroAPI.Controllers;
 // ----------------------------------------------------------------
 // ANOS FISCAIS
 // ----------------------------------------------------------------
+[Authorize]
 [ApiController]
 [Route("api/anos-fiscais")]
 public class AnoFiscalController : ControllerBase
@@ -36,6 +38,7 @@ public class AnoFiscalController : ControllerBase
         return Ok(new AnoFiscalResponse(a.Id, a.Ano, a.Descricao, a.SaldoInicial, a.CriadoEm));
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] AnoFiscalRequest req)
     {
@@ -47,6 +50,7 @@ public class AnoFiscalController : ControllerBase
 // ----------------------------------------------------------------
 // CLIENTES
 // ----------------------------------------------------------------
+[Authorize]
 [ApiController]
 [Route("api/clientes")]
 public class ClienteController : ControllerBase
@@ -70,6 +74,7 @@ public class ClienteController : ControllerBase
         return Ok(new ClienteResponse(c.Id, c.Nome, c.ValorMensal, c.Ativo));
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ClienteRequest req)
     {
@@ -77,6 +82,7 @@ public class ClienteController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] ClienteRequest req)
     {
@@ -84,6 +90,7 @@ public class ClienteController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPatch("{id}/ativo")]
     public async Task<IActionResult> SetAtivo(int id, [FromQuery] bool ativo)
     {
@@ -95,6 +102,7 @@ public class ClienteController : ControllerBase
 // ----------------------------------------------------------------
 // RECEITA
 // ----------------------------------------------------------------
+[Authorize]
 [ApiController]
 [Route("api/receitas")]
 public class ReceitaController : ControllerBase
@@ -142,6 +150,7 @@ public class ReceitaController : ControllerBase
         return Ok(response);
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] LancamentoReceitaRequest req)
     {
@@ -162,6 +171,7 @@ public class ReceitaController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { anoFiscalId = req.AnoFiscalId }, new { id });
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] LancamentoUpdateRequest req)
     {
@@ -169,6 +179,7 @@ public class ReceitaController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -180,6 +191,7 @@ public class ReceitaController : ControllerBase
 // ----------------------------------------------------------------
 // DESPESA
 // ----------------------------------------------------------------
+[Authorize]
 [ApiController]
 [Route("api/despesas")]
 public class DespesaController : ControllerBase
@@ -231,6 +243,7 @@ public class DespesaController : ControllerBase
         return Ok(response);
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] LancamentoDespesaRequest req)
     {
@@ -250,6 +263,7 @@ public class DespesaController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { anoFiscalId = req.AnoFiscalId }, new { id });
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] LancamentoUpdateRequest req)
     {
@@ -257,6 +271,7 @@ public class DespesaController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "usuario")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -268,6 +283,7 @@ public class DespesaController : ControllerBase
 // ----------------------------------------------------------------
 // RESUMO
 // ----------------------------------------------------------------
+[Authorize]
 [ApiController]
 [Route("api/resumo")]
 public class ResumoController : ControllerBase

@@ -93,6 +93,17 @@ public class LancamentoDespesa
     public AnoFiscal? AnoFiscal { get; set; }
 }
 
+// ---------- AUTH ----------
+
+public class Usuario
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = "";
+    public string SenhaHash { get; set; } = "";
+    public string Perfil { get; set; } = "usuario"; // "usuario" | "contador"
+    public DateTime CriadoEm { get; set; }
+}
+
 // ---------- RESUMO (view) ----------
 
 public class ResumoMensal
