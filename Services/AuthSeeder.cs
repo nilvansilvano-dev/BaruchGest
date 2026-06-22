@@ -17,12 +17,14 @@ public class AuthSeeder
         _db.Usuarios.AddRange(
             new Usuario
             {
+                Nome      = "Usuário Teste",
                 Email     = "usuario@teste.com",
                 SenhaHash = BCrypt.Net.BCrypt.HashPassword("Teste@123"),
                 Perfil    = "usuario"
             },
             new Usuario
             {
+                Nome      = "Contador Teste",
                 Email     = "contador@teste.com",
                 SenhaHash = BCrypt.Net.BCrypt.HashPassword("Teste@123"),
                 Perfil    = "contador"

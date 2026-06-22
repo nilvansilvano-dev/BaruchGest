@@ -1,7 +1,8 @@
 // ============================================================
 // Repositories/FinanceiroRepository.cs
 // Escrita: EF Core (via FinanceiroDbContext)
-// Leitura complexa: Dapper (queries com JOIN/GROUP BY e views)
+// Leitura complexa: Dapper (queries com JOIN/GROUP BY)
+// Todos os dados são isolados por UsuarioId (multi-tenant por usuário)
 // ============================================================
 
 using System.Data;
@@ -16,35 +17,48 @@ namespace FinanceiroAPI.Repositories;
 public interface IFinanceiroRepository
 {
     // Ano Fiscal
-    Task<IEnumerable<AnoFiscal>> GetAnosFiscaisAsync();
-    Task<AnoFiscal?> GetAnoFiscalByIdAsync(int id);
-    Task<int> CreateAnoFiscalAsync(int ano, string? descricao, decimal saldoInicial = 0);
+    Task<IEnumerable<AnoFiscal>> GetAnosFiscaisAsync(int usuarioId);
+    Task<AnoFiscal?> GetAnoFiscalByIdAsync(int id, int usuarioId);
+    Task<int> CreateAnoFiscalAsync(int ano, string? descricao, decimal saldoInicial, int usuarioId);
 
     // Clientes
-    Task<IEnumerable<Cliente>> GetClientesAsync(bool apenasAtivos = true);
-    Task<Cliente?> GetClienteByIdAsync(int id);
-    Task<int> CreateClienteAsync(string nome, decimal? valorMensal);
-    Task UpdateClienteAsync(int id, string nome, decimal? valorMensal);
-    Task SetClienteAtivoAsync(int id, bool ativo);
+    Task<IEnumerable<Cliente>> GetClientesAsync(int usuarioId, bool apenasAtivos = true);
+    Task<Cliente?> GetClienteByIdAsync(int id, int usuarioId);
+    Task<int> CreateClienteAsync(string nome, decimal? valorMensal, int usuarioId);
+    Task UpdateClienteAsync(int id, string nome, decimal? valorMensal, int usuarioId);
+    Task SetClienteAtivoAsync(int id, bool ativo, int usuarioId);
 
-    // Receita
-    Task<IEnumerable<CategoriaReceita>> GetCategoriasReceitaAsync();
+    // Plano de Contas — Receita
+    Task<IEnumerable<GrupoReceita>> GetGruposReceitaAsync(int usuarioId);
+    Task<IEnumerable<CategoriaReceita>> GetCategoriasReceitaAsync(int usuarioId);
+    Task<int> CreateGrupoReceitaAsync(string nome, int usuarioId);
+    Task<int> CreateCategoriaReceitaAsync(string nome, int grupoId, int usuarioId);
+    Task DeleteGrupoReceitaAsync(int id, int usuarioId);
+    Task DeleteCategoriaReceitaAsync(int id, int usuarioId);
+
+    // Lancamentos Receita
     Task<IEnumerable<LancamentoReceita>> GetLancamentosReceitaAsync(int anoFiscalId, int? mes = null, int? clienteId = null);
     Task<int> CreateLancamentoReceitaAsync(LancamentoReceita lanc);
     Task UpdateLancamentoReceitaAsync(int id, decimal valor, string? observacao);
     Task DeleteLancamentoReceitaAsync(int id);
 
-    // Despesa
-    Task<IEnumerable<GrupoDespesa>> GetGruposDespesaAsync();
-    Task<IEnumerable<CategoriaDespesa>> GetCategoriasDespesaAsync(int? grupoId = null);
+    // Plano de Contas — Despesa
+    Task<IEnumerable<GrupoDespesa>> GetGruposDespesaAsync(int usuarioId);
+    Task<IEnumerable<CategoriaDespesa>> GetCategoriasDespesaAsync(int usuarioId, int? grupoId = null);
+    Task<int> CreateGrupoDespesaAsync(string nome, int usuarioId);
+    Task<int> CreateCategoriaDespesaAsync(string nome, int grupoId, int usuarioId);
+    Task DeleteGrupoDespesaAsync(int id, int usuarioId);
+    Task DeleteCategoriaDespesaAsync(int id, int usuarioId);
+
+    // Lancamentos Despesa
     Task<IEnumerable<LancamentoDespesa>> GetLancamentosDespesaAsync(int anoFiscalId, int? mes = null, int? grupoId = null);
     Task<int> CreateLancamentoDespesaAsync(LancamentoDespesa lanc);
     Task UpdateLancamentoDespesaAsync(int id, decimal valor, string? observacao);
     Task DeleteLancamentoDespesaAsync(int id);
 
-    // Resumo
-    Task<IEnumerable<ResumoMensal>> GetResumoMensalAsync(int ano);
-    Task<IEnumerable<DespesaPorGrupo>> GetDespesaPorGrupoAsync(int ano, int? mes = null);
+    // Resumo (direto, sem views — filtra por usuarioId via AnoFiscal)
+    Task<IEnumerable<ResumoMensal>> GetResumoMensalAsync(int ano, int usuarioId);
+    Task<IEnumerable<DespesaPorGrupo>> GetDespesaPorGrupoAsync(int ano, int usuarioId, int? mes = null);
 }
 
 public class FinanceiroRepository : IFinanceiroRepository
@@ -63,15 +77,18 @@ public class FinanceiroRepository : IFinanceiroRepository
 
     // -------- ANO FISCAL (EF Core) --------
 
-    public async Task<IEnumerable<AnoFiscal>> GetAnosFiscaisAsync() =>
-        await _db.AnosFiscais.OrderByDescending(x => x.Ano).ToListAsync();
+    public async Task<IEnumerable<AnoFiscal>> GetAnosFiscaisAsync(int usuarioId) =>
+        await _db.AnosFiscais
+            .Where(x => x.UsuarioId == usuarioId)
+            .OrderByDescending(x => x.Ano)
+            .ToListAsync();
 
-    public async Task<AnoFiscal?> GetAnoFiscalByIdAsync(int id) =>
-        await _db.AnosFiscais.FindAsync(id);
+    public async Task<AnoFiscal?> GetAnoFiscalByIdAsync(int id, int usuarioId) =>
+        await _db.AnosFiscais.FirstOrDefaultAsync(x => x.Id == id && x.UsuarioId == usuarioId);
 
-    public async Task<int> CreateAnoFiscalAsync(int ano, string? descricao, decimal saldoInicial = 0)
+    public async Task<int> CreateAnoFiscalAsync(int ano, string? descricao, decimal saldoInicial, int usuarioId)
     {
-        var entity = new AnoFiscal { Ano = ano, Descricao = descricao, SaldoInicial = saldoInicial };
+        var entity = new AnoFiscal { Ano = ano, Descricao = descricao, SaldoInicial = saldoInicial, UsuarioId = usuarioId };
         _db.AnosFiscais.Add(entity);
         await _db.SaveChangesAsync();
         return entity.Id;
@@ -79,56 +96,95 @@ public class FinanceiroRepository : IFinanceiroRepository
 
     // -------- CLIENTES (EF Core) --------
 
-    public async Task<IEnumerable<Cliente>> GetClientesAsync(bool apenasAtivos = true) =>
+    public async Task<IEnumerable<Cliente>> GetClientesAsync(int usuarioId, bool apenasAtivos = true) =>
         await _db.Clientes
-            .Where(c => !apenasAtivos || c.Ativo)
+            .Where(c => c.UsuarioId == usuarioId && (!apenasAtivos || c.Ativo))
             .OrderBy(c => c.Nome)
             .ToListAsync();
 
-    public async Task<Cliente?> GetClienteByIdAsync(int id) =>
-        await _db.Clientes.FindAsync(id);
+    public async Task<Cliente?> GetClienteByIdAsync(int id, int usuarioId) =>
+        await _db.Clientes.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
 
-    public async Task<int> CreateClienteAsync(string nome, decimal? valorMensal)
+    public async Task<int> CreateClienteAsync(string nome, decimal? valorMensal, int usuarioId)
     {
-        var entity = new Cliente { Nome = nome, ValorMensal = valorMensal };
+        var entity = new Cliente { Nome = nome, ValorMensal = valorMensal, UsuarioId = usuarioId };
         _db.Clientes.Add(entity);
         await _db.SaveChangesAsync();
         return entity.Id;
     }
 
-    public async Task UpdateClienteAsync(int id, string nome, decimal? valorMensal)
+    public async Task UpdateClienteAsync(int id, string nome, decimal? valorMensal, int usuarioId)
     {
-        var entity = await _db.Clientes.FindAsync(id);
+        var entity = await _db.Clientes.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
         if (entity is null) return;
         entity.Nome = nome;
         entity.ValorMensal = valorMensal;
         await _db.SaveChangesAsync();
     }
 
-    public async Task SetClienteAtivoAsync(int id, bool ativo)
+    public async Task SetClienteAtivoAsync(int id, bool ativo, int usuarioId)
     {
-        var entity = await _db.Clientes.FindAsync(id);
+        var entity = await _db.Clientes.FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
         if (entity is null) return;
         entity.Ativo = ativo;
         await _db.SaveChangesAsync();
     }
 
-    // -------- RECEITA — leitura (Dapper) --------
+    // -------- PLANO DE CONTAS — RECEITA (EF Core) --------
 
-    public async Task<IEnumerable<CategoriaReceita>> GetCategoriasReceitaAsync()
+    public async Task<IEnumerable<GrupoReceita>> GetGruposReceitaAsync(int usuarioId) =>
+        await _db.Set<GrupoReceita>()
+            .Where(g => g.UsuarioId == usuarioId && g.Ativo)
+            .OrderBy(g => g.Nome)
+            .ToListAsync();
+
+    public async Task<IEnumerable<CategoriaReceita>> GetCategoriasReceitaAsync(int usuarioId)
     {
         using var db = Dapper;
         var sql = @"
             SELECT cr.*, gr.Id, gr.Nome, gr.Ativo
             FROM CategoriaReceita cr
             INNER JOIN GrupoReceita gr ON gr.Id = cr.GrupoReceitaId
-            WHERE cr.Ativo = 1
+            WHERE cr.Ativo = 1 AND cr.UsuarioId = @UsuarioId
             ORDER BY gr.Nome, cr.Nome";
 
         return await db.QueryAsync<CategoriaReceita, GrupoReceita, CategoriaReceita>(
             sql,
             (cat, grp) => { cat.Grupo = grp; return cat; },
+            new { UsuarioId = usuarioId },
             splitOn: "Id");
+    }
+
+    public async Task<int> CreateGrupoReceitaAsync(string nome, int usuarioId)
+    {
+        var entity = new GrupoReceita { Nome = nome, UsuarioId = usuarioId };
+        _db.Set<GrupoReceita>().Add(entity);
+        await _db.SaveChangesAsync();
+        return entity.Id;
+    }
+
+    public async Task<int> CreateCategoriaReceitaAsync(string nome, int grupoId, int usuarioId)
+    {
+        var entity = new CategoriaReceita { Nome = nome, GrupoReceitaId = grupoId, UsuarioId = usuarioId };
+        _db.Set<CategoriaReceita>().Add(entity);
+        await _db.SaveChangesAsync();
+        return entity.Id;
+    }
+
+    public async Task DeleteGrupoReceitaAsync(int id, int usuarioId)
+    {
+        var entity = await _db.Set<GrupoReceita>().FirstOrDefaultAsync(g => g.Id == id && g.UsuarioId == usuarioId);
+        if (entity is null) return;
+        entity.Ativo = false;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task DeleteCategoriaReceitaAsync(int id, int usuarioId)
+    {
+        var entity = await _db.Set<CategoriaReceita>().FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+        if (entity is null) return;
+        entity.Ativo = false;
+        await _db.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<LancamentoReceita>> GetLancamentosReceitaAsync(
@@ -191,31 +247,62 @@ public class FinanceiroRepository : IFinanceiroRepository
         await _db.SaveChangesAsync();
     }
 
-    // -------- DESPESA — leitura (Dapper) --------
+    // -------- PLANO DE CONTAS — DESPESA (EF Core) --------
 
-    public async Task<IEnumerable<GrupoDespesa>> GetGruposDespesaAsync()
-    {
-        using var db = Dapper;
-        return await db.QueryAsync<GrupoDespesa>(
-            "SELECT * FROM GrupoDespesa WHERE Ativo = 1 ORDER BY Nome");
-    }
+    public async Task<IEnumerable<GrupoDespesa>> GetGruposDespesaAsync(int usuarioId) =>
+        await _db.Set<GrupoDespesa>()
+            .Where(g => g.UsuarioId == usuarioId && g.Ativo)
+            .OrderBy(g => g.Nome)
+            .ToListAsync();
 
-    public async Task<IEnumerable<CategoriaDespesa>> GetCategoriasDespesaAsync(int? grupoId = null)
+    public async Task<IEnumerable<CategoriaDespesa>> GetCategoriasDespesaAsync(int usuarioId, int? grupoId = null)
     {
         using var db = Dapper;
         var sql = @"
             SELECT cd.*, gd.Id, gd.Nome, gd.Ativo
             FROM CategoriaDespesa cd
             INNER JOIN GrupoDespesa gd ON gd.Id = cd.GrupoDespesaId
-            WHERE cd.Ativo = 1
+            WHERE cd.Ativo = 1 AND cd.UsuarioId = @UsuarioId
               AND (@GrupoId IS NULL OR cd.GrupoDespesaId = @GrupoId)
             ORDER BY gd.Nome, cd.Nome";
 
         return await db.QueryAsync<CategoriaDespesa, GrupoDespesa, CategoriaDespesa>(
             sql,
             (cat, grp) => { cat.Grupo = grp; return cat; },
-            new { GrupoId = grupoId },
+            new { UsuarioId = usuarioId, GrupoId = grupoId },
             splitOn: "Id");
+    }
+
+    public async Task<int> CreateGrupoDespesaAsync(string nome, int usuarioId)
+    {
+        var entity = new GrupoDespesa { Nome = nome, UsuarioId = usuarioId };
+        _db.Set<GrupoDespesa>().Add(entity);
+        await _db.SaveChangesAsync();
+        return entity.Id;
+    }
+
+    public async Task<int> CreateCategoriaDespesaAsync(string nome, int grupoId, int usuarioId)
+    {
+        var entity = new CategoriaDespesa { Nome = nome, GrupoDespesaId = grupoId, UsuarioId = usuarioId };
+        _db.Set<CategoriaDespesa>().Add(entity);
+        await _db.SaveChangesAsync();
+        return entity.Id;
+    }
+
+    public async Task DeleteGrupoDespesaAsync(int id, int usuarioId)
+    {
+        var entity = await _db.Set<GrupoDespesa>().FirstOrDefaultAsync(g => g.Id == id && g.UsuarioId == usuarioId);
+        if (entity is null) return;
+        entity.Ativo = false;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task DeleteCategoriaDespesaAsync(int id, int usuarioId)
+    {
+        var entity = await _db.Set<CategoriaDespesa>().FirstOrDefaultAsync(c => c.Id == id && c.UsuarioId == usuarioId);
+        if (entity is null) return;
+        entity.Ativo = false;
+        await _db.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<LancamentoDespesa>> GetLancamentosDespesaAsync(
@@ -275,21 +362,61 @@ public class FinanceiroRepository : IFinanceiroRepository
         await _db.SaveChangesAsync();
     }
 
-    // -------- RESUMO (Dapper — views) --------
+    // -------- RESUMO (Dapper — queries diretas filtrando por UsuarioId) --------
 
-    public async Task<IEnumerable<ResumoMensal>> GetResumoMensalAsync(int ano)
+    public async Task<IEnumerable<ResumoMensal>> GetResumoMensalAsync(int ano, int usuarioId)
     {
         using var db = Dapper;
-        return await db.QueryAsync<ResumoMensal>(
-            "SELECT * FROM vw_ResumoMensal WHERE Ano = @Ano ORDER BY Mes",
-            new { Ano = ano });
+        var sql = @"
+            SELECT
+                @Ano AS Ano,
+                m.Mes,
+                ISNULL(r.TotalReceita, 0) AS TotalReceita,
+                ISNULL(d.TotalDespesa, 0) AS TotalDespesa,
+                ISNULL(r.TotalReceita, 0) - ISNULL(d.TotalDespesa, 0) AS SaldoMensal
+            FROM (
+                SELECT 1 AS Mes UNION SELECT 2 UNION SELECT 3  UNION SELECT 4
+                UNION SELECT 5  UNION SELECT 6 UNION SELECT 7  UNION SELECT 8
+                UNION SELECT 9  UNION SELECT 10 UNION SELECT 11 UNION SELECT 12
+            ) m
+            LEFT JOIN (
+                SELECT lr.Mes, SUM(lr.Valor) AS TotalReceita
+                FROM LancamentoReceita lr
+                INNER JOIN AnoFiscal af ON af.Id = lr.AnoFiscalId
+                    AND af.Ano = @Ano AND af.UsuarioId = @UsuarioId
+                GROUP BY lr.Mes
+            ) r ON r.Mes = m.Mes
+            LEFT JOIN (
+                SELECT ld.Mes, SUM(ld.Valor) AS TotalDespesa
+                FROM LancamentoDespesa ld
+                INNER JOIN AnoFiscal af ON af.Id = ld.AnoFiscalId
+                    AND af.Ano = @Ano AND af.UsuarioId = @UsuarioId
+                GROUP BY ld.Mes
+            ) d ON d.Mes = m.Mes
+            WHERE r.TotalReceita IS NOT NULL OR d.TotalDespesa IS NOT NULL
+            ORDER BY m.Mes";
+
+        return await db.QueryAsync<ResumoMensal>(sql, new { Ano = ano, UsuarioId = usuarioId });
     }
 
-    public async Task<IEnumerable<DespesaPorGrupo>> GetDespesaPorGrupoAsync(int ano, int? mes = null)
+    public async Task<IEnumerable<DespesaPorGrupo>> GetDespesaPorGrupoAsync(int ano, int usuarioId, int? mes = null)
     {
         using var db = Dapper;
-        return await db.QueryAsync<DespesaPorGrupo>(
-            "SELECT * FROM vw_DespesaPorGrupo WHERE Ano = @Ano AND (@Mes IS NULL OR Mes = @Mes) ORDER BY Total DESC",
-            new { Ano = ano, Mes = mes });
+        var sql = @"
+            SELECT
+                @Ano AS Ano,
+                ld.Mes,
+                gd.Nome AS Grupo,
+                SUM(ld.Valor) AS Total
+            FROM LancamentoDespesa ld
+            INNER JOIN CategoriaDespesa cd ON cd.Id = ld.CategoriaDespesaId
+            INNER JOIN GrupoDespesa gd     ON gd.Id = cd.GrupoDespesaId
+            INNER JOIN AnoFiscal af        ON af.Id = ld.AnoFiscalId
+                AND af.Ano = @Ano AND af.UsuarioId = @UsuarioId
+            WHERE (@Mes IS NULL OR ld.Mes = @Mes)
+            GROUP BY ld.Mes, gd.Nome
+            ORDER BY Total DESC";
+
+        return await db.QueryAsync<DespesaPorGrupo>(sql, new { Ano = ano, UsuarioId = usuarioId, Mes = mes });
     }
 }

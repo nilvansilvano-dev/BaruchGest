@@ -4,6 +4,7 @@ using FinanceiroAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FinanceiroAPI.Migrations
 {
     [DbContext(typeof(FinanceiroDbContext))]
-    partial class FinanceiroDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260622021914_AddContactInfoToUsuario")]
+    partial class AddContactInfoToUsuario
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -77,14 +80,9 @@ namespace FinanceiroAPI.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("GrupoDespesaId");
-
-                    b.HasIndex("UsuarioId");
 
                     b.ToTable("CategoriaDespesa", (string)null);
                 });
@@ -110,14 +108,9 @@ namespace FinanceiroAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("GrupoReceitaId");
-
-                    b.HasIndex("UsuarioId");
 
                     b.ToTable("CategoriaReceita", (string)null);
                 });
@@ -158,49 +151,6 @@ namespace FinanceiroAPI.Migrations
                     b.ToTable("Cliente", (string)null);
                 });
 
-            modelBuilder.Entity("FinanceiroAPI.Models.Convite", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ContadorId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<string>("EmailConvidado")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("ExpiraEm")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(36)
-                        .HasColumnType("nvarchar(36)");
-
-                    b.Property<bool>("Usado")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContadorId");
-
-                    b.HasIndex("Token")
-                        .IsUnique();
-
-                    b.ToTable("Convite", (string)null);
-                });
-
             modelBuilder.Entity("FinanceiroAPI.Models.GrupoDespesa", b =>
                 {
                     b.Property<int>("Id")
@@ -219,12 +169,7 @@ namespace FinanceiroAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
 
                     b.ToTable("GrupoDespesa", (string)null);
                 });
@@ -247,12 +192,7 @@ namespace FinanceiroAPI.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("UsuarioId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
 
                     b.ToTable("GrupoReceita", (string)null);
                 });
@@ -429,14 +369,7 @@ namespace FinanceiroAPI.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("FinanceiroAPI.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Grupo");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("FinanceiroAPI.Models.CategoriaReceita", b =>
@@ -447,48 +380,10 @@ namespace FinanceiroAPI.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("FinanceiroAPI.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Grupo");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("FinanceiroAPI.Models.Cliente", b =>
-                {
-                    b.HasOne("FinanceiroAPI.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("FinanceiroAPI.Models.Convite", b =>
-                {
-                    b.HasOne("FinanceiroAPI.Models.Usuario", "Contador")
-                        .WithMany()
-                        .HasForeignKey("ContadorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Contador");
-                });
-
-            modelBuilder.Entity("FinanceiroAPI.Models.GrupoDespesa", b =>
-                {
-                    b.HasOne("FinanceiroAPI.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("FinanceiroAPI.Models.GrupoReceita", b =>
                 {
                     b.HasOne("FinanceiroAPI.Models.Usuario", "Usuario")
                         .WithMany()

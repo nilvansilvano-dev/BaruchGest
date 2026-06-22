@@ -18,6 +18,7 @@ async function req(method, path, body) {
   if (res.status === 401) {
     localStorage.removeItem('token');
     localStorage.removeItem('perfil');
+    localStorage.removeItem('userId');
     window.location.href = '/login';
     return;
   }
@@ -35,32 +36,61 @@ async function req(method, path, body) {
   return res.json();
 }
 
+// Adiciona ?usuarioId=X ao path se fornecido
+function uid(usuarioId) {
+  return usuarioId ? `?usuarioId=${usuarioId}` : '';
+}
+function uidAnd(usuarioId) {
+  return usuarioId ? `&usuarioId=${usuarioId}` : '';
+}
+
 export const api = {
-  login: (email, senha) => req('POST', '/api/auth/login', { email, senha }),
+  login:          (email, senha)            => req('POST', '/api/auth/login',           { email, senha }),
+  registro:       (nome, email, senha, telefone, tipoDocumento, documento, endereco) =>
+    req('POST', '/api/auth/registro', { nome, email, senha, telefone, tipoDocumento, documento, endereco }),
+  redefinirSenha: (email, novaSenha)        => req('POST', '/api/auth/redefinir-senha', { email, novaSenha }),
 
-  getUsuarios: () => req('GET', '/api/usuarios'),
-  createUsuario: (data) => req('POST', '/api/usuarios', data),
-  setUsuarioAtivo: (id, ativo) => req('PATCH', `/api/usuarios/${id}/ativo?ativo=${ativo}`),
+  getUsuarios:    ()             => req('GET', '/api/usuarios'),
+  createUsuario:  (data)         => req('POST', '/api/usuarios', data),
+  setUsuarioAtivo:(id, ativo)    => req('PATCH', `/api/usuarios/${id}/ativo?ativo=${ativo}`),
 
-  getAnosFiscais: () => req('GET', '/api/anos-fiscais'),
-  createAnoFiscal: (data) => req('POST', '/api/anos-fiscais', data),
+  getConvites:    ()             => req('GET', '/api/convites'),
+  criarConvite:   (data)         => req('POST', '/api/convites', data),
+  validarConvite: (token)        => req('GET', `/api/convites/validar/${token}`),
+  usarConvite:    (token)        => req('POST', `/api/convites/usar/${token}`),
 
-  getClientes: () => req('GET', '/api/clientes'),
+  getAnosFiscais: (usuarioId)    => req('GET', `/api/anos-fiscais${uid(usuarioId)}`),
+  createAnoFiscal:(data)         => req('POST', '/api/anos-fiscais', data),
 
-  getCategoriasReceita: () => req('GET', '/api/receitas/categorias'),
-  getLancamentosReceita: (anoFiscalId, mes) =>
-    req('GET', `/api/receitas?anoFiscalId=${anoFiscalId}${mes ? `&mes=${mes}` : ''}`),
-  createLancamentoReceita: (data) => req('POST', '/api/receitas', data),
-  updateLancamentoReceita: (id, data) => req('PUT', `/api/receitas/${id}`, data),
-  deleteLancamentoReceita: (id) => req('DELETE', `/api/receitas/${id}`),
+  getClientes:    (usuarioId)    => req('GET', `/api/clientes${uid(usuarioId)}`),
+  createCliente:  (data)         => req('POST', '/api/clientes', data),
+  updateCliente:  (id, data)     => req('PUT',  `/api/clientes/${id}`, data),
+  setClienteAtivo:(id, ativo)    => req('PATCH', `/api/clientes/${id}/ativo?ativo=${ativo}`),
 
-  getGruposDespesa: () => req('GET', '/api/despesas/grupos'),
-  getCategoriasDespesa: () => req('GET', '/api/despesas/categorias'),
-  getLancamentosDespesa: (anoFiscalId, mes) =>
-    req('GET', `/api/despesas?anoFiscalId=${anoFiscalId}${mes ? `&mes=${mes}` : ''}`),
-  createLancamentoDespesa: (data) => req('POST', '/api/despesas', data),
-  updateLancamentoDespesa: (id, data) => req('PUT', `/api/despesas/${id}`, data),
-  deleteLancamentoDespesa: (id) => req('DELETE', `/api/despesas/${id}`),
+  getGruposReceita:    (usuarioId) => req('GET', `/api/receitas/grupos${uid(usuarioId)}`),
+  getCategoriasReceita:(usuarioId) => req('GET', `/api/receitas/categorias${uid(usuarioId)}`),
+  createGrupoReceita:  (data)      => req('POST', '/api/receitas/grupos', data),
+  createCategoriaReceita:(data)    => req('POST', '/api/receitas/categorias', data),
+  deleteGrupoReceita:  (id)        => req('DELETE', `/api/receitas/grupos/${id}`),
+  deleteCategoriaReceita:(id)      => req('DELETE', `/api/receitas/categorias/${id}`),
+  getLancamentosReceita: (anoFiscalId, mes, usuarioId) =>
+    req('GET', `/api/receitas?anoFiscalId=${anoFiscalId}${mes ? `&mes=${mes}` : ''}${uidAnd(usuarioId)}`),
+  createLancamentoReceita: (data)           => req('POST', '/api/receitas', data),
+  updateLancamentoReceita: (id, data)       => req('PUT',  `/api/receitas/${id}`, data),
+  deleteLancamentoReceita: (id)             => req('DELETE', `/api/receitas/${id}`),
 
-  getResumoAnual: (ano) => req('GET', `/api/resumo/${ano}`),
+  getGruposDespesa:    (usuarioId) => req('GET', `/api/despesas/grupos${uid(usuarioId)}`),
+  getCategoriasDespesa:(usuarioId) => req('GET', `/api/despesas/categorias${uid(usuarioId)}`),
+  createGrupoDespesa:  (data)      => req('POST', '/api/despesas/grupos', data),
+  createCategoriaDespesa:(data)    => req('POST', '/api/despesas/categorias', data),
+  deleteGrupoDespesa:  (id)        => req('DELETE', `/api/despesas/grupos/${id}`),
+  deleteCategoriaDespesa:(id)      => req('DELETE', `/api/despesas/categorias/${id}`),
+  getLancamentosDespesa: (anoFiscalId, mes, usuarioId) =>
+    req('GET', `/api/despesas?anoFiscalId=${anoFiscalId}${mes ? `&mes=${mes}` : ''}${uidAnd(usuarioId)}`),
+  createLancamentoDespesa: (data)           => req('POST', '/api/despesas', data),
+  updateLancamentoDespesa: (id, data)       => req('PUT',  `/api/despesas/${id}`, data),
+  deleteLancamentoDespesa: (id)             => req('DELETE', `/api/despesas/${id}`),
+
+  getResumoAnual: (ano, usuarioId) =>
+    req('GET', `/api/resumo/${ano}${uid(usuarioId)}`),
 };

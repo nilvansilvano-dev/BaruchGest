@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useContador } from '../context/ContadorContext';
 import './Lancamentos.css';
 
 const MESES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -14,7 +16,12 @@ const formVazio = { anoFiscalId: '', categoriaDespesaId: '', mes: '', valor: '',
 
 export default function Despesas() {
   const { user } = useAuth();
-  const podeEscrever = user?.perfil === 'usuario';
+  const { viewingUser } = useContador();
+  const navigate = useNavigate();
+
+  const isContador = user?.perfil === 'contador';
+  const viewingUserId = isContador ? viewingUser?.id : null;
+  const podeEscrever = user?.perfil === 'usuario' || (isContador && viewingUser?.id === user?.id);
 
   const [anosFiscais, setAnosFiscais] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -28,9 +35,11 @@ export default function Despesas() {
   const [sucesso, setSucesso] = useState('');
 
   useEffect(() => {
+    if (isContador && !viewingUserId) return;
+    setAnosFiscais([]); setFiltroAno(''); setLancamentos([]);
     Promise.all([
-      api.getAnosFiscais(),
-      api.getCategoriasDespesa(),
+      api.getAnosFiscais(viewingUserId),
+      api.getCategoriasDespesa(viewingUserId),
     ]).then(([anos, cats]) => {
       setAnosFiscais(anos || []);
       setCategorias(cats || []);
@@ -39,13 +48,26 @@ export default function Despesas() {
         setForm(f => ({ ...f, anoFiscalId: String(anos[0].id) }));
       }
     });
-  }, []);
+  }, [viewingUserId, isContador]);
 
   useEffect(() => {
     if (!filtroAno) return;
-    api.getLancamentosDespesa(Number(filtroAno), filtroMes ? Number(filtroMes) : undefined)
+    api.getLancamentosDespesa(Number(filtroAno), filtroMes ? Number(filtroMes) : undefined, viewingUserId)
       .then(data => setLancamentos(data || []));
-  }, [filtroAno, filtroMes]);
+  }, [filtroAno, filtroMes, viewingUserId]);
+
+  if (isContador && !viewingUser) {
+    return (
+      <div className="page">
+        <div className="empty-state">
+          <p>Selecione um usuário para visualizar as despesas.</p>
+          <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => navigate('/usuarios')}>
+            Ir para Usuários
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function setField(field, value) {
     setForm(f => ({ ...f, [field]: value }));
@@ -67,7 +89,7 @@ export default function Despesas() {
       setForm({ ...formVazio, anoFiscalId: form.anoFiscalId });
       setMostraForm(false);
       const data = await api.getLancamentosDespesa(
-        Number(filtroAno), filtroMes ? Number(filtroMes) : undefined);
+        Number(filtroAno), filtroMes ? Number(filtroMes) : undefined, viewingUserId);
       setLancamentos(data || []);
     } catch (err) {
       setErro(err.message || 'Erro ao salvar.');

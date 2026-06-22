@@ -93,12 +93,40 @@ public record DespesaGrupoResponse(
 // ---------- AUTH ----------
 
 public record LoginRequest(string Email, string Senha);
-public record LoginResponse(string Token, string Perfil, DateTime Expira);
+public record LoginResponse(string Token, string Perfil, DateTime Expira, int Id);
+
+// Registro público — perfil sempre "usuario"
+public record RegistroRequest(
+    string Nome,
+    string Email,
+    string Senha,
+    string? Telefone,
+    string? TipoDocumento,
+    string? Documento,
+    string? Endereco
+);
+
+public record RedefinirSenhaRequest(string Email, string NovaSenha);
 
 // ---------- USUARIOS (gerenciado pelo contador) ----------
 
-public record UsuarioCreateRequest(string Email, string Senha);
-public record UsuarioResponse(int Id, string Email, string Perfil, bool Ativo, DateTime CriadoEm);
+public record UsuarioCreateRequest(string Nome, string Email, string Senha);
+public record UsuarioResponse(
+    int Id, string Nome, string Email, string Perfil,
+    bool Ativo, DateTime CriadoEm,
+    string? Telefone, string? TipoDocumento, string? Documento, string? Endereco, string? Crc
+);
+
+// ---------- PLANO DE CONTAS ----------
+
+public record GrupoCreateRequest(string Nome);
+public record CategoriaCreateRequest(int GrupoId, string Nome);
+
+// ---------- CONVITE ----------
+
+public record ConviteCreateRequest(string? EmailConvidado, int DiasValidade = 7);
+public record ConviteResponse(int Id, string Token, string? EmailConvidado, bool Usado, DateTime CriadoEm, DateTime ExpiraEm, string LinkConvite);
+public record ConviteValidarResponse(bool Valido, string? EmailConvidado, string? Motivo);
 
 // ---------- ANO FISCAL ----------
 

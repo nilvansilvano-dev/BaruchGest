@@ -1,3 +1,6 @@
+/* Estilos específicos da tela de Usuários */
+/* Classes compartilhadas (.btn-acessar, .btn-desativar, etc.) estão em Lancamentos.css */
+
 .usuario-perfil-info {
   background: #f0f7ff;
   border: 1px solid #bfdbfe;
@@ -7,50 +10,8 @@
   font-size: 13px;
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.status-ativo {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.status-inativo {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.btn-desativar {
-  background: transparent;
-  border: 1px solid #fca5a5;
-  color: #dc2626;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-desativar:hover {
-  background: #fee2e2;
-}
-
-.btn-reativar {
-  background: transparent;
-  border: 1px solid #86efac;
-  color: #15803d;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-reativar:hover {
-  background: #dcfce7;
+html.dark .usuario-perfil-info {
+  background: #1e3a5f33;
+  border-color: #334155;
+  color: #93C5FD;
 }

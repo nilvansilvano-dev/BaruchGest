@@ -16,17 +16,20 @@ public class UsuarioController : ControllerBase
 
     public UsuarioController(FinanceiroDbContext db) => _db = db;
 
+    private static UsuarioResponse ToResponse(Usuario u) =>
+        new(u.Id, u.Nome, u.Email, u.Perfil, u.Ativo, u.CriadoEm,
+            u.Telefone, u.TipoDocumento, u.Documento, u.Endereco, u.Crc);
+
     /// <summary>Lista todos os usuários (perfil cliente/usuario). Apenas o contador pode listar.</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var usuarios = await _db.Usuarios
             .Where(u => u.Perfil == "usuario")
-            .OrderBy(u => u.Email)
-            .Select(u => new UsuarioResponse(u.Id, u.Email, u.Perfil, u.Ativo, u.CriadoEm))
+            .OrderBy(u => u.Nome).ThenBy(u => u.Email)
             .ToListAsync();
 
-        return Ok(usuarios);
+        return Ok(usuarios.Select(ToResponse));
     }
 
     /// <summary>Cria novo usuário com perfil 'usuario'. Apenas o contador pode criar.</summary>
@@ -38,6 +41,7 @@ public class UsuarioController : ControllerBase
 
         var usuario = new Usuario
         {
+            Nome      = req.Nome,
             Email     = req.Email,
             SenhaHash = BCrypt.Net.BCrypt.HashPassword(req.Senha),
             Perfil    = "usuario",
@@ -47,8 +51,7 @@ public class UsuarioController : ControllerBase
         _db.Usuarios.Add(usuario);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetAll), new { id = usuario.Id },
-            new UsuarioResponse(usuario.Id, usuario.Email, usuario.Perfil, usuario.Ativo, usuario.CriadoEm));
+        return CreatedAtAction(nameof(GetAll), new { id = usuario.Id }, ToResponse(usuario));
     }
 
     /// <summary>Ativa ou desativa um usuário. Apenas o contador pode fazer isso.</summary>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useContador } from '../context/ContadorContext';
 import './Lancamentos.css';
 
 const MESES = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -14,7 +16,13 @@ const formVazio = { anoFiscalId: '', categoriaReceitaId: '', clienteId: '', mes:
 
 export default function Receitas() {
   const { user } = useAuth();
-  const podeEscrever = user?.perfil === 'usuario';
+  const { viewingUser } = useContador();
+  const navigate = useNavigate();
+
+  const isContador = user?.perfil === 'contador';
+  const viewingUserId = isContador ? viewingUser?.id : null;
+  // Contador pode escrever somente quando está vendo os próprios dados
+  const podeEscrever = user?.perfil === 'usuario' || (isContador && viewingUser?.id === user?.id);
 
   const [anosFiscais, setAnosFiscais] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -28,11 +36,19 @@ export default function Receitas() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
 
+  // Cadastro de cliente inline
+  const [mostraCliente, setMostraCliente] = useState(false);
+  const [novoCliente, setNovoCliente] = useState({ nome: '', valorMensal: '' });
+  const [erroCliente, setErroCliente] = useState('');
+  const [criandoCliente, setCriandoCliente] = useState(false);
+
   useEffect(() => {
+    if (isContador && !viewingUserId) return;
+    setAnosFiscais([]); setFiltroAno(''); setLancamentos([]);
     Promise.all([
-      api.getAnosFiscais(),
-      api.getCategoriasReceita(),
-      api.getClientes(),
+      api.getAnosFiscais(viewingUserId),
+      api.getCategoriasReceita(viewingUserId),
+      api.getClientes(viewingUserId),
     ]).then(([anos, cats, clis]) => {
       setAnosFiscais(anos || []);
       setCategorias(cats || []);
@@ -42,13 +58,26 @@ export default function Receitas() {
         setForm(f => ({ ...f, anoFiscalId: String(anos[0].id) }));
       }
     });
-  }, []);
+  }, [viewingUserId, isContador]);
 
   useEffect(() => {
     if (!filtroAno) return;
-    api.getLancamentosReceita(Number(filtroAno), filtroMes ? Number(filtroMes) : undefined)
+    api.getLancamentosReceita(Number(filtroAno), filtroMes ? Number(filtroMes) : undefined, viewingUserId)
       .then(data => setLancamentos(data || []));
-  }, [filtroAno, filtroMes]);
+  }, [filtroAno, filtroMes, viewingUserId]);
+
+  if (isContador && !viewingUser) {
+    return (
+      <div className="page">
+        <div className="empty-state">
+          <p>Selecione um usuário para visualizar as receitas.</p>
+          <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => navigate('/usuarios')}>
+            Ir para Usuários
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function setField(field, value) {
     setForm(f => ({ ...f, [field]: value }));
@@ -71,7 +100,7 @@ export default function Receitas() {
       setForm({ ...formVazio, anoFiscalId: form.anoFiscalId });
       setMostraForm(false);
       const data = await api.getLancamentosReceita(
-        Number(filtroAno), filtroMes ? Number(filtroMes) : undefined);
+        Number(filtroAno), filtroMes ? Number(filtroMes) : undefined, viewingUserId);
       setLancamentos(data || []);
     } catch (err) {
       setErro(err.message || 'Erro ao salvar.');
@@ -90,18 +119,69 @@ export default function Receitas() {
     }
   }
 
+  async function handleCriarCliente(e) {
+    e.preventDefault();
+    setErroCliente('');
+    setCriandoCliente(true);
+    try {
+      await api.createCliente({
+        nome: novoCliente.nome,
+        valorMensal: novoCliente.valorMensal ? Number(novoCliente.valorMensal) : null,
+      });
+      setNovoCliente({ nome: '', valorMensal: '' });
+      setMostraCliente(false);
+      const clis = await api.getClientes(viewingUserId);
+      setClientes(clis || []);
+    } catch (err) {
+      setErroCliente(err.message || 'Erro ao cadastrar cliente.');
+    } finally {
+      setCriandoCliente(false);
+    }
+  }
+
   const totalFiltrado = lancamentos.reduce((s, l) => s + l.valor, 0);
 
   return (
     <div className="page">
       <div className="page-header">
         <h2>Receitas</h2>
-        {podeEscrever && (
-          <button className="btn-primary" onClick={() => setMostraForm(f => !f)}>
-            {mostraForm ? 'Cancelar' : '+ Novo Lançamento'}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {podeEscrever && (
+            <button className="btn-secondary" onClick={() => { setMostraCliente(f => !f); setMostraForm(false); }}>
+              {mostraCliente ? 'Cancelar' : '+ Cliente'}
+            </button>
+          )}
+          {podeEscrever && (
+            <button className="btn-primary" onClick={() => { setMostraForm(f => !f); setMostraCliente(false); }}>
+              {mostraForm ? 'Cancelar' : '+ Novo Lançamento'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {mostraCliente && podeEscrever && (
+        <div className="form-card" style={{ marginBottom: 16 }}>
+          <h3>Cadastrar Cliente</h3>
+          {erroCliente && <div className="alert-erro">{erroCliente}</div>}
+          <form onSubmit={handleCriarCliente} style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
+            <div className="field">
+              <label>Nome do cliente</label>
+              <input type="text" required value={novoCliente.nome}
+                onChange={e => setNovoCliente(c => ({ ...c, nome: e.target.value }))}
+                placeholder="Ex: Empresa Ltda" autoFocus style={{ width: 220 }} />
+            </div>
+            <div className="field">
+              <label>Valor mensal (R$, opcional)</label>
+              <input type="number" step="0.01" min="0" value={novoCliente.valorMensal}
+                onChange={e => setNovoCliente(c => ({ ...c, valorMensal: e.target.value }))}
+                placeholder="0,00" style={{ width: 130 }} />
+            </div>
+            <button type="submit" className="btn-primary" disabled={criandoCliente}>
+              {criandoCliente ? 'Salvando...' : 'Salvar'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {mostraForm && podeEscrever && (
         <div className="form-card">

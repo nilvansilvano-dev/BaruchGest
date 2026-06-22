@@ -1,8 +1,13 @@
 // ============================================================
 // Controllers/FinanceiroController.cs
 // Endpoints REST para Receita, Despesa e Resumo
+// Cada dado é isolado por UsuarioId (multi-tenant).
+// - perfil "usuario": sempre usa o próprio ID do JWT
+// - perfil "contador": passa ?usuarioId= para ver os dados de um usuário
 // ============================================================
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using FinanceiroAPI.DTOs;
@@ -11,6 +16,31 @@ using FinanceiroAPI.Repositories;
 using FinanceiroAPI.Services;
 
 namespace FinanceiroAPI.Controllers;
+
+// Helper estático compartilhado por todos os controllers deste arquivo
+internal static class UidHelper
+{
+    private const string SEM_USUARIO = "Como contador, informe ?usuarioId= para selecionar o usuário.";
+
+    /// <summary>
+    /// Retorna o ID efetivo a usar:
+    /// - "usuario": sempre o próprio ID do JWT (ignora param)
+    /// - "contador": usa o param fornecido; null se não informado
+    /// </summary>
+    public static (int? uid, IActionResult? erro) Resolve(ClaimsPrincipal user, int? param, ControllerBase ctrl)
+    {
+        var sub = user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+               ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (user.IsInRole("usuario"))
+            return (int.Parse(sub!), null);
+
+        if (param is null)
+            return (null, ctrl.BadRequest(SEM_USUARIO));
+
+        return (param, null);
+    }
+}
 
 // ----------------------------------------------------------------
 // ANOS FISCAIS
@@ -24,25 +54,32 @@ public class AnoFiscalController : ControllerBase
     public AnoFiscalController(IFinanceiroRepository repo) => _repo = repo;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int? usuarioId = null)
     {
-        var anos = await _repo.GetAnosFiscaisAsync();
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+
+        var anos = await _repo.GetAnosFiscaisAsync(uid!.Value);
         return Ok(anos.Select(a => new AnoFiscalResponse(a.Id, a.Ano, a.Descricao, a.SaldoInicial, a.CriadoEm)));
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(int id, [FromQuery] int? usuarioId = null)
     {
-        var a = await _repo.GetAnoFiscalByIdAsync(id);
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+
+        var a = await _repo.GetAnoFiscalByIdAsync(id, uid!.Value);
         if (a is null) return NotFound();
         return Ok(new AnoFiscalResponse(a.Id, a.Ano, a.Descricao, a.SaldoInicial, a.CriadoEm));
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] AnoFiscalRequest req)
     {
-        var id = await _repo.CreateAnoFiscalAsync(req.Ano, req.Descricao, req.SaldoInicial);
+        var uid = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                         ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var id = await _repo.CreateAnoFiscalAsync(req.Ano, req.Descricao, req.SaldoInicial, uid);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 }
@@ -58,43 +95,51 @@ public class ClienteController : ControllerBase
     private readonly IFinanceiroRepository _repo;
     public ClienteController(IFinanceiroRepository repo) => _repo = repo;
 
-    /// <summary>Lista clientes. ?apenasAtivos=false para incluir inativos.</summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] bool apenasAtivos = true)
+    public async Task<IActionResult> GetAll([FromQuery] int? usuarioId = null, [FromQuery] bool apenasAtivos = true)
     {
-        var clientes = await _repo.GetClientesAsync(apenasAtivos);
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+
+        var clientes = await _repo.GetClientesAsync(uid!.Value, apenasAtivos);
         return Ok(clientes.Select(c => new ClienteResponse(c.Id, c.Nome, c.ValorMensal, c.Ativo)));
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(int id, [FromQuery] int? usuarioId = null)
     {
-        var c = await _repo.GetClienteByIdAsync(id);
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+
+        var c = await _repo.GetClienteByIdAsync(id, uid!.Value);
         if (c is null) return NotFound();
         return Ok(new ClienteResponse(c.Id, c.Nome, c.ValorMensal, c.Ativo));
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ClienteRequest req)
     {
-        var id = await _repo.CreateClienteAsync(req.Nome, req.ValorMensal);
+        var uid = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                         ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var id = await _repo.CreateClienteAsync(req.Nome, req.ValorMensal, uid);
         return CreatedAtAction(nameof(GetById), new { id }, new { id });
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] ClienteRequest req)
     {
-        await _repo.UpdateClienteAsync(id, req.Nome, req.ValorMensal);
+        var uid = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                         ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _repo.UpdateClienteAsync(id, req.Nome, req.ValorMensal, uid);
         return NoContent();
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPatch("{id}/ativo")]
     public async Task<IActionResult> SetAtivo(int id, [FromQuery] bool ativo)
     {
-        await _repo.SetClienteAtivoAsync(id, ativo);
+        var uid = int.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                         ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _repo.SetClienteAtivoAsync(id, ativo, uid);
         return NoContent();
     }
 }
@@ -117,15 +162,59 @@ public class ReceitaController : ControllerBase
 
     public ReceitaController(IFinanceiroRepository repo) => _repo = repo;
 
-    /// <summary>Lista categorias de receita disponíveis.</summary>
-    [HttpGet("categorias")]
-    public async Task<IActionResult> GetCategorias() =>
-        Ok(await _repo.GetCategoriasReceitaAsync());
+    private int MyUid() => int.Parse(
+        User.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
+        User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    /// <summary>
-    /// Lista lançamentos de receita.
-    /// Query params: anoFiscalId (obrigatório), mes (opcional), clienteId (opcional)
-    /// </summary>
+    [HttpGet("grupos")]
+    public async Task<IActionResult> GetGrupos([FromQuery] int? usuarioId = null)
+    {
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+        var grupos = await _repo.GetGruposReceitaAsync(uid!.Value);
+        return Ok(grupos.Select(g => new { g.Id, g.Nome, g.Ativo }));
+    }
+
+    [HttpGet("categorias")]
+    public async Task<IActionResult> GetCategorias([FromQuery] int? usuarioId = null)
+    {
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+        return Ok(await _repo.GetCategoriasReceitaAsync(uid!.Value));
+    }
+
+    [HttpPost("grupos")]
+    public async Task<IActionResult> CreateGrupo([FromBody] GrupoCreateRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Nome)) return BadRequest("Nome obrigatório.");
+        var uid = MyUid();
+        var id = await _repo.CreateGrupoReceitaAsync(req.Nome.Trim(), uid);
+        return Created("", new { id, req.Nome });
+    }
+
+    [HttpPost("categorias")]
+    public async Task<IActionResult> CreateCategoria([FromBody] CategoriaCreateRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Nome)) return BadRequest("Nome obrigatório.");
+        var uid = MyUid();
+        var id = await _repo.CreateCategoriaReceitaAsync(req.Nome.Trim(), req.GrupoId, uid);
+        return Created("", new { id, req.Nome, req.GrupoId });
+    }
+
+    [HttpDelete("grupos/{id}")]
+    public async Task<IActionResult> DeleteGrupo(int id)
+    {
+        await _repo.DeleteGrupoReceitaAsync(id, MyUid());
+        return NoContent();
+    }
+
+    [HttpDelete("categorias/{id}")]
+    public async Task<IActionResult> DeleteCategoria(int id)
+    {
+        await _repo.DeleteCategoriaReceitaAsync(id, MyUid());
+        return NoContent();
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int anoFiscalId,
@@ -135,22 +224,15 @@ public class ReceitaController : ControllerBase
         var lancamentos = await _repo.GetLancamentosReceitaAsync(anoFiscalId, mes, clienteId);
 
         var response = lancamentos.Select(l => new LancamentoReceitaResponse(
-            l.Id,
-            l.AnoFiscal!.Ano,
-            l.Categoria!.Grupo!.Nome,
-            l.Categoria!.Nome,
-            l.Cliente?.Nome,
-            l.Mes,
-            Meses[l.Mes],
-            l.Valor,
-            l.Observacao,
-            l.LancadoEm
+            l.Id, l.AnoFiscal!.Ano,
+            l.Categoria!.Grupo!.Nome, l.Categoria!.Nome,
+            l.Cliente?.Nome, l.Mes, Meses[l.Mes],
+            l.Valor, l.Observacao, l.LancadoEm
         ));
 
         return Ok(response);
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] LancamentoReceitaRequest req)
     {
@@ -171,7 +253,6 @@ public class ReceitaController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { anoFiscalId = req.AnoFiscalId }, new { id });
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] LancamentoUpdateRequest req)
     {
@@ -179,7 +260,6 @@ public class ReceitaController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -206,20 +286,59 @@ public class DespesaController : ControllerBase
 
     public DespesaController(IFinanceiroRepository repo) => _repo = repo;
 
-    /// <summary>Lista grupos de despesa.</summary>
+    private int MyUid() => int.Parse(
+        User.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
+        User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpGet("grupos")]
-    public async Task<IActionResult> GetGrupos() =>
-        Ok(await _repo.GetGruposDespesaAsync());
+    public async Task<IActionResult> GetGrupos([FromQuery] int? usuarioId = null)
+    {
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+        var grupos = await _repo.GetGruposDespesaAsync(uid!.Value);
+        return Ok(grupos.Select(g => new { g.Id, g.Nome, g.Ativo }));
+    }
 
-    /// <summary>Lista categorias. ?grupoId= para filtrar por grupo.</summary>
     [HttpGet("categorias")]
-    public async Task<IActionResult> GetCategorias([FromQuery] int? grupoId = null) =>
-        Ok(await _repo.GetCategoriasDespesaAsync(grupoId));
+    public async Task<IActionResult> GetCategorias([FromQuery] int? usuarioId = null, [FromQuery] int? grupoId = null)
+    {
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+        return Ok(await _repo.GetCategoriasDespesaAsync(uid!.Value, grupoId));
+    }
 
-    /// <summary>
-    /// Lista lançamentos de despesa.
-    /// Query params: anoFiscalId (obrigatório), mes (opcional), grupoId (opcional)
-    /// </summary>
+    [HttpPost("grupos")]
+    public async Task<IActionResult> CreateGrupo([FromBody] GrupoCreateRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Nome)) return BadRequest("Nome obrigatório.");
+        var uid = MyUid();
+        var id = await _repo.CreateGrupoDespesaAsync(req.Nome.Trim(), uid);
+        return Created("", new { id, req.Nome });
+    }
+
+    [HttpPost("categorias")]
+    public async Task<IActionResult> CreateCategoria([FromBody] CategoriaCreateRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Nome)) return BadRequest("Nome obrigatório.");
+        var uid = MyUid();
+        var id = await _repo.CreateCategoriaDespesaAsync(req.Nome.Trim(), req.GrupoId, uid);
+        return Created("", new { id, req.Nome, req.GrupoId });
+    }
+
+    [HttpDelete("grupos/{id}")]
+    public async Task<IActionResult> DeleteGrupo(int id)
+    {
+        await _repo.DeleteGrupoDespesaAsync(id, MyUid());
+        return NoContent();
+    }
+
+    [HttpDelete("categorias/{id}")]
+    public async Task<IActionResult> DeleteCategoria(int id)
+    {
+        await _repo.DeleteCategoriaDespesaAsync(id, MyUid());
+        return NoContent();
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int anoFiscalId,
@@ -229,21 +348,15 @@ public class DespesaController : ControllerBase
         var lancamentos = await _repo.GetLancamentosDespesaAsync(anoFiscalId, mes, grupoId);
 
         var response = lancamentos.Select(l => new LancamentoDespesaResponse(
-            l.Id,
-            l.AnoFiscal!.Ano,
-            l.Categoria!.Grupo!.Nome,
-            l.Categoria!.Nome,
-            l.Mes,
-            Meses[l.Mes],
-            l.Valor,
-            l.Observacao,
-            l.LancadoEm
+            l.Id, l.AnoFiscal!.Ano,
+            l.Categoria!.Grupo!.Nome, l.Categoria!.Nome,
+            l.Mes, Meses[l.Mes],
+            l.Valor, l.Observacao, l.LancadoEm
         ));
 
         return Ok(response);
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] LancamentoDespesaRequest req)
     {
@@ -263,7 +376,6 @@ public class DespesaController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { anoFiscalId = req.AnoFiscalId }, new { id });
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] LancamentoUpdateRequest req)
     {
@@ -271,7 +383,6 @@ public class DespesaController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = "usuario")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -292,19 +403,24 @@ public class ResumoController : ControllerBase
 
     public ResumoController(ResumoService resumoService) => _resumoService = resumoService;
 
-    /// <summary>Resumo anual completo. SaldoAcumulado parte do SaldoInicial do AnoFiscal.</summary>
     [HttpGet("{ano}")]
-    public async Task<IActionResult> GetResumoAnual(int ano) =>
-        Ok(await _resumoService.GetResumoAnualAsync(ano));
+    public async Task<IActionResult> GetResumoAnual(int ano, [FromQuery] int? usuarioId = null)
+    {
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+        return Ok(await _resumoService.GetResumoAnualAsync(ano, uid!.Value));
+    }
 
-    /// <summary>Resumo de um mês específico com SaldoAcumulado até o mês.</summary>
     [HttpGet("{ano}/{mes}")]
-    public async Task<IActionResult> GetResumoMes(int ano, int mes)
+    public async Task<IActionResult> GetResumoMes(int ano, int mes, [FromQuery] int? usuarioId = null)
     {
         if (mes is < 1 or > 12)
             return BadRequest("Mês deve estar entre 1 e 12.");
 
-        var resultado = await _resumoService.GetResumoMesAsync(ano, mes);
+        var (uid, erro) = UidHelper.Resolve(User, usuarioId, this);
+        if (erro is not null) return erro;
+
+        var resultado = await _resumoService.GetResumoMesAsync(ano, mes, uid!.Value);
         if (resultado is null)
             return NotFound("Nenhum lançamento encontrado para este período.");
 

@@ -16,6 +16,7 @@ public class FinanceiroDbContext : DbContext
     public DbSet<CategoriaDespesa> CategoriasDespesa => Set<CategoriaDespesa>();
     public DbSet<LancamentoDespesa> LancamentosDespesa => Set<LancamentoDespesa>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<Convite> Convites => Set<Convite>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -26,6 +27,9 @@ public class FinanceiroDbContext : DbContext
             e.Property(x => x.Ano).IsRequired();
             e.Property(x => x.SaldoInicial).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
             e.Property(x => x.CriadoEm).HasDefaultValueSql("GETDATE()");
+            e.Property(x => x.UsuarioId);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<GrupoReceita>(e =>
@@ -34,6 +38,8 @@ public class FinanceiroDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Nome).HasMaxLength(100).IsRequired();
             e.Property(x => x.Ativo).HasDefaultValue(true);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<CategoriaReceita>(e =>
@@ -46,6 +52,8 @@ public class FinanceiroDbContext : DbContext
              .WithMany()
              .HasForeignKey(x => x.GrupoReceitaId)
              .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<Cliente>(e =>
@@ -56,6 +64,9 @@ public class FinanceiroDbContext : DbContext
             e.Property(x => x.ValorMensal).HasColumnType("decimal(18,2)");
             e.Property(x => x.Ativo).HasDefaultValue(true);
             e.Property(x => x.CriadoEm).HasDefaultValueSql("GETDATE()");
+            e.Property(x => x.UsuarioId);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<LancamentoReceita>(e =>
@@ -86,6 +97,8 @@ public class FinanceiroDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Nome).HasMaxLength(100).IsRequired();
             e.Property(x => x.Ativo).HasDefaultValue(true);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<CategoriaDespesa>(e =>
@@ -98,6 +111,8 @@ public class FinanceiroDbContext : DbContext
              .WithMany()
              .HasForeignKey(x => x.GrupoDespesaId)
              .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Usuario).WithMany().HasForeignKey(x => x.UsuarioId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Restrict);
         });
 
         model.Entity<LancamentoDespesa>(e =>
@@ -117,16 +132,35 @@ public class FinanceiroDbContext : DbContext
              .OnDelete(DeleteBehavior.Restrict);
         });
 
+        model.Entity<Convite>(e =>
+        {
+            e.ToTable("Convite");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Token).HasMaxLength(36).IsRequired();
+            e.HasIndex(x => x.Token).IsUnique();
+            e.Property(x => x.EmailConvidado).HasMaxLength(200);
+            e.Property(x => x.Usado).HasDefaultValue(false);
+            e.Property(x => x.CriadoEm).HasDefaultValueSql("GETDATE()");
+            e.HasOne(x => x.Contador).WithMany().HasForeignKey(x => x.ContadorId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
         model.Entity<Usuario>(e =>
         {
             e.ToTable("Usuario");
             e.HasKey(x => x.Id);
+            e.Property(x => x.Nome).HasMaxLength(150).IsRequired().HasDefaultValue("");
             e.Property(x => x.Email).HasMaxLength(200).IsRequired();
             e.HasIndex(x => x.Email).IsUnique();
             e.Property(x => x.SenhaHash).IsRequired();
             e.Property(x => x.Perfil).HasMaxLength(20).IsRequired();
             e.Property(x => x.Ativo).HasDefaultValue(true);
             e.Property(x => x.CriadoEm).HasDefaultValueSql("GETDATE()");
+            e.Property(x => x.Telefone).HasMaxLength(30);
+            e.Property(x => x.TipoDocumento).HasMaxLength(4); // "CPF" | "CNPJ"
+            e.Property(x => x.Documento).HasMaxLength(20);
+            e.Property(x => x.Endereco).HasMaxLength(300);
+            e.Property(x => x.Crc).HasMaxLength(20);
         });
     }
 }

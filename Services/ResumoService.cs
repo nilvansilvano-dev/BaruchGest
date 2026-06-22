@@ -15,13 +15,13 @@ public class ResumoService
 
     public ResumoService(IFinanceiroRepository repo) => _repo = repo;
 
-    public async Task<ResumoAnualResponse> GetResumoAnualAsync(int ano)
+    public async Task<ResumoAnualResponse> GetResumoAnualAsync(int ano, int usuarioId)
     {
-        var anoFiscal = (await _repo.GetAnosFiscaisAsync()).FirstOrDefault(a => a.Ano == ano);
+        var anoFiscal = (await _repo.GetAnosFiscaisAsync(usuarioId)).FirstOrDefault(a => a.Ano == ano);
         decimal saldoInicial = anoFiscal?.SaldoInicial ?? 0m;
 
-        var meses  = (await _repo.GetResumoMensalAsync(ano)).ToList();
-        var grupos = (await _repo.GetDespesaPorGrupoAsync(ano)).ToList();
+        var meses  = (await _repo.GetResumoMensalAsync(ano, usuarioId)).ToList();
+        var grupos = (await _repo.GetDespesaPorGrupoAsync(ano, usuarioId)).ToList();
 
         decimal saldoAcumulado = saldoInicial;
         var mesesResponse = meses.Select(m =>
@@ -54,18 +54,17 @@ public class ResumoService
         );
     }
 
-    public async Task<object?> GetResumoMesAsync(int ano, int mes)
+    public async Task<object?> GetResumoMesAsync(int ano, int mes, int usuarioId)
     {
-        var anoFiscal = (await _repo.GetAnosFiscaisAsync()).FirstOrDefault(a => a.Ano == ano);
+        var anoFiscal = (await _repo.GetAnosFiscaisAsync(usuarioId)).FirstOrDefault(a => a.Ano == ano);
         decimal saldoInicial = anoFiscal?.SaldoInicial ?? 0m;
 
-        var todosMeses = (await _repo.GetResumoMensalAsync(ano)).ToList();
-        var grupos     = (await _repo.GetDespesaPorGrupoAsync(ano, mes)).ToList();
+        var todosMeses = (await _repo.GetResumoMensalAsync(ano, usuarioId)).ToList();
+        var grupos     = (await _repo.GetDespesaPorGrupoAsync(ano, usuarioId, mes)).ToList();
 
         var mesData = todosMeses.FirstOrDefault(m => m.Mes == mes);
         if (mesData is null) return null;
 
-        // SaldoAcumulado acumula do SaldoInicial até o mês solicitado
         decimal saldoAcumulado = saldoInicial +
             todosMeses.Where(m => m.Mes <= mes).Sum(m => m.SaldoMensal);
 
